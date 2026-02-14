@@ -1,81 +1,135 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Uma Racing | Natural Hub",
-   LoadingTitle = "Menyesuaikan Sistem Sprint...",
-   LoadingSubtitle = "V7 Stealth Edition",
+   Name = "Uma Racing | Sprint Injector V9",
+   LoadingTitle = "Menyuntikkan Kode ke Tombol Sprint...",
+   LoadingSubtitle = "Oleh Ruphas PRO",
    ConfigurationSaving = { Enabled = false }
 })
 
-local Tab = Window:CreateTab("Stealth Hack", 4483362458)
+local Tab = Window:CreateTab("Main Hack", 4483362458)
 
-_G.CustomSpeed = 16
-_G.StealthActive = false
+-- Global Settings
+_G.MaxSpeed = 16
+_G.InfStamina = false
+_G.AutoRun = false
+_G.AntiHit = false
 
--- 1. STEALTH INFINITE STAMINA
+-- 1. ULTIMATE INF STAMINA (Mencegat pengurangan nilai)
 Tab:CreateToggle({
-   Name = "Stealth Inf Stamina (Gunakan saat Sprint)",
+   Name = "Infinite Stamina",
    CurrentValue = false,
-   Flag = "StealthStam",
+   Flag = "StamToggle",
    Callback = function(Value)
-       _G.StealthActive = Value
-       task.spawn(function()
-           while _G.StealthActive do
-               local p = game.Players.LocalPlayer
-               local char = p.Character
-               if char then
-                   -- Mengunci stamina secara halus agar tidak terlihat aneh di UI
-                   char:SetAttribute("Stamina", 100)
-                   char:SetAttribute("Energy", 100)
+       _G.InfStamina = Value
+       if Value then
+           task.spawn(function()
+               while _G.InfStamina do
+                   local p = game.Players.LocalPlayer
+                   if p.Character then
+                       -- Memaksa atribut stamina tetap 100% setiap milidetik
+                       p.Character:SetAttribute("Stamina", 100)
+                       p.Character:SetAttribute("Energy", 100)
+                       p.Character:SetAttribute("SprintDrain", 0) -- Mencoba mematikan drain
+                   end
+                   task.wait()
                end
-               task.wait(0.01) -- Sangat cepat untuk melawan sistem drain
+           end)
+       end
+   end,
+})
+
+-- 2. MAX SPEED CHANGER (Fokus ke Tombol Sprint)
+Tab:CreateSlider({
+   Name = "Max Speed (Saat Sprint)",
+   Range = {16, 500},
+   Increment = 1,
+   CurrentValue = 16,
+   Flag = "SpeedSlider", 
+   Callback = function(Value)
+       _G.MaxSpeed = Value
+   end,
+})
+
+-- LOOP UTAMA: Mendeteksi aktivitas sprint dan memaksa Speed
+game:GetService("RunService").RenderStepped:Connect(function()
+    local p = game.Players.LocalPlayer
+    local char = p.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    
+    if hum then
+        -- Jika pemain bergerak DAN menekan tombol (Magnitude > 0)
+        -- Kita paksa WalkSpeed tepat saat game mencoba mengontrolnya
+        if hum.MoveDirection.Magnitude > 0 then
+            hum.WalkSpeed = _G.MaxSpeed
+        end
+        
+        -- Fitur Auto Run
+        if _G.AutoRun then
+            hum:Move(Vector3.new(0, 0, -1), true)
+        end
+    end
+end)
+
+-- 3. ANTI HIT WALL (Noclip)
+Tab:CreateToggle({
+   Name = "Anti Hit Wall",
+   CurrentValue = false,
+   Flag = "AntiHit",
+   Callback = function(Value)
+       _G.AntiHit = Value
+       game:GetService("RunService").Stepped:Connect(function()
+           if _G.AntiHit and game.Players.LocalPlayer.Character then
+               for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                   if v:IsA("BasePart") then v.CanCollide = false end
+               end
            end
        end)
    end,
 })
 
--- 2. SPEED CHANGER (Hanya aktif saat kamu bergerak)
-Tab:CreateSlider({
-   Name = "Kecepatan Sprint (Natural)",
-   Range = {16, 200},
-   Increment = 1,
-   CurrentValue = 16,
-   Flag = "SpeedSlider", 
+-- 4. AUTO RUN TOGGLE
+Tab:CreateToggle({
+   Name = "Auto Run",
+   CurrentValue = false,
+   Flag = "AutoRun",
    Callback = function(Value)
-       _G.CustomSpeed = Value
+       _G.AutoRun = Value
    end,
 })
 
--- 3. SPRINT DETECTOR (Menimpa sistem lari bawaan game)
-game:GetService("RunService").RenderStepped:Connect(function()
-    local p = game.Players.LocalPlayer
-    local hum = p.Character and p.Character:FindFirstChild("Humanoid")
-    
-    if hum and _G.StealthActive then
-        -- Jika kamu sedang menekan tombol jalan/sprint
-        if hum.MoveDirection.Magnitude > 0 then
-            hum.WalkSpeed = _G.CustomSpeed
+-- 5. PLAYER ESP & CAMERA
+Tab:CreateButton({
+   Name = "Player ESP & Instant Camera",
+   Callback = function()
+       -- ESP
+       for _, v in pairs(game.Players:GetPlayers()) do
+           if v ~= game.Players.LocalPlayer and v.Character then
+               if not v.Character:FindFirstChild("Highlight") then
+                   local h = Instance.new("Highlight", v.Character)
+                   h.FillColor = Color3.fromRGB(255, 0, 0)
+               end
+           end
+       end
+       -- Camera Turn
+       workspace.CurrentCamera.FieldOfView = 120
+   end,
+})
+
+-- FITUR "NO STAMINA SPEED" (Bypass Lambat saat Lelah)
+task.spawn(function()
+    while true do
+        local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hum and _G.InfStamina then
+            -- Mencegah status 'Tired' atau melambat
+            hum.PlatformStand = false
         end
+        task.wait(0.1)
     end
 end)
 
--- 4. ANTI-KICK BYPASS (Mencegah terdeteksi server)
-task.spawn(function()
-    local mt = getrawmetatable(game)
-    setreadonly(mt, false)
-    local oldindex = mt.__index
-    mt.__index = newcclosure(function(t, k)
-        if k == "WalkSpeed" and not checkcaller() then
-            return 16 -- Server akan selalu mengira speed kamu cuma 16
-        end
-        return oldindex(t, k)
-    end)
-    setreadonly(mt, true)
-end)
-
 Rayfield:Notify({
-   Title = "Stealth V7 Aktif",
-   Content = "Silakan tekan tombol sprint seperti biasa!",
+   Title = "V9 Sprint Injected!",
+   Content = "Nyalakan Inf Stamina, lalu tekan tombol sprint asli game!",
    Duration = 5,
 })
-
