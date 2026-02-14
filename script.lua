@@ -1,126 +1,81 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Uma Racing ULTRA | Ruphas Hub",
-   LoadingTitle = "Bypassing Internal Systems...",
-   LoadingSubtitle = "V4 Extreme Edition",
+   Name = "Uma Racing | Natural Hub",
+   LoadingTitle = "Menyesuaikan Sistem Sprint...",
+   LoadingSubtitle = "V7 Stealth Edition",
    ConfigurationSaving = { Enabled = false }
 })
 
-local Tab = Window:CreateTab("Main Cheats", 4483362458)
+local Tab = Window:CreateTab("Stealth Hack", 4483362458)
 
--- VARIABEL GLOBAL
-_G.RunSpeed = 16
-_G.AutoRun = false
-_G.InfStam = false
-_G.AntiHit = false
+_G.CustomSpeed = 16
+_G.StealthActive = false
 
--- 1. EXTREME INF STAMINA (Memaksa Stamina tetap Full setiap saat)
+-- 1. STEALTH INFINITE STAMINA
 Tab:CreateToggle({
-   Name = "Inf Stamina (Force Lock)",
+   Name = "Stealth Inf Stamina (Gunakan saat Sprint)",
    CurrentValue = false,
-   Flag = "StamToggle",
+   Flag = "StealthStam",
    Callback = function(Value)
-       _G.InfStam = Value
-       if Value then
-           task.spawn(function()
-               while _G.InfStam do
-                   local p = game.Players.LocalPlayer
-                   local char = p.Character
-                   if char then
-                       -- Memaksa Attributes & Values secara instan
-                       char:SetAttribute("Stamina", 1000)
-                       char:SetAttribute("Energy", 1000)
-                       
-                       local stats = p:FindFirstChild("leaderstats") or p:FindFirstChild("Stats")
-                       if stats and stats:FindFirstChild("Stamina") then
-                           stats.Stamina.Value = 1000
-                       end
-                   end
-                   task.wait() -- Tanpa delay agar sistem game kalah cepat
-               end
-           end)
-       end
-   end,
-})
-
--- 2. MAX SPEED CHANGER (Anti-Reset Method)
-Tab:CreateSlider({
-   Name = "Max Speed Changer",
-   Range = {16, 500},
-   Increment = 1,
-   CurrentValue = 16,
-   Flag = "SpeedSlider", 
-   Callback = function(Value)
-       _G.RunSpeed = Value
-   end,
-})
-
--- Loop Penstabil Speed (Dijalankan setiap frame)
-game:GetService("RunService").RenderStepped:Connect(function()
-    local char = game.Players.LocalPlayer.Character
-    local hum = char and char:FindFirstChild("Humanoid")
-    if hum then
-        if _G.AutoRun or hum.MoveDirection.Magnitude > 0 then
-            hum.WalkSpeed = _G.RunSpeed
-        end
-        if _G.AutoRun then
-            hum:Move(Vector3.new(0, 0, -1), true)
-        end
-    end
-end)
-
--- 3. AUTO RUN
-Tab:CreateToggle({
-   Name = "Auto Run (Otomatis)",
-   CurrentValue = false,
-   Flag = "AutoRun",
-   Callback = function(Value)
-       _G.AutoRun = Value
-   end,
-})
-
--- 4. ANTI HIT WALL (Noclip)
-Tab:CreateToggle({
-   Name = "Anti Hit Wall",
-   CurrentValue = false,
-   Flag = "AntiHit",
-   Callback = function(Value)
-       _G.AntiHit = Value
+       _G.StealthActive = Value
        task.spawn(function()
-           while _G.AntiHit do
-               local char = game.Players.LocalPlayer.Character
+           while _G.StealthActive do
+               local p = game.Players.LocalPlayer
+               local char = p.Character
                if char then
-                   for _, v in pairs(char:GetDescendants()) do
-                       if v:IsA("BasePart") and v.CanCollide then
-                           v.CanCollide = false
-                       end
-                   end
+                   -- Mengunci stamina secara halus agar tidak terlihat aneh di UI
+                   char:SetAttribute("Stamina", 100)
+                   char:SetAttribute("Energy", 100)
                end
-               task.wait(0.1)
+               task.wait(0.01) -- Sangat cepat untuk melawan sistem drain
            end
        end)
    end,
 })
 
--- 5. TAMBAHAN FITUR LAINNYA
-Tab:CreateButton({
-   Name = "ESP & Instant Camera",
-   Callback = function()
-       -- ESP
-       for _, v in pairs(game.Players:GetPlayers()) do
-           if v ~= game.Players.LocalPlayer and v.Character then
-               local h = Instance.new("Highlight", v.Character)
-               h.FillColor = Color3.fromRGB(255, 0, 0)
-           end
-       end
-       -- Camera
-       workspace.CurrentCamera.FieldOfView = 100
+-- 2. SPEED CHANGER (Hanya aktif saat kamu bergerak)
+Tab:CreateSlider({
+   Name = "Kecepatan Sprint (Natural)",
+   Range = {16, 200},
+   Increment = 1,
+   CurrentValue = 16,
+   Flag = "SpeedSlider", 
+   Callback = function(Value)
+       _G.CustomSpeed = Value
    end,
 })
 
+-- 3. SPRINT DETECTOR (Menimpa sistem lari bawaan game)
+game:GetService("RunService").RenderStepped:Connect(function()
+    local p = game.Players.LocalPlayer
+    local hum = p.Character and p.Character:FindFirstChild("Humanoid")
+    
+    if hum and _G.StealthActive then
+        -- Jika kamu sedang menekan tombol jalan/sprint
+        if hum.MoveDirection.Magnitude > 0 then
+            hum.WalkSpeed = _G.CustomSpeed
+        end
+    end
+end)
+
+-- 4. ANTI-KICK BYPASS (Mencegah terdeteksi server)
+task.spawn(function()
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
+    local oldindex = mt.__index
+    mt.__index = newcclosure(function(t, k)
+        if k == "WalkSpeed" and not checkcaller() then
+            return 16 -- Server akan selalu mengira speed kamu cuma 16
+        end
+        return oldindex(t, k)
+    end)
+    setreadonly(mt, true)
+end)
+
 Rayfield:Notify({
-   Title = "V4 Loaded!",
-   Content = "Aktifkan 'Inf Stamina' dan naikkan 'Max Speed'!",
+   Title = "Stealth V7 Aktif",
+   Content = "Silakan tekan tombol sprint seperti biasa!",
    Duration = 5,
 })
+
